@@ -256,5 +256,44 @@ create trigger trborrarreceta before delete on Producto
 for each row
 execute procedure borrareceta();
 
-DROP TRIGGER trborrarreceta ON Transaccion_Inventario;
-DROP FUNCTION borrareceta cascade;
+create function actualizarunidades() returns trigger
+as
+$$
+declare
+begin
+	--IF old.idproducto = idproductosalida THEN
+	update inventario set saldo = saldo - NEW.unidades where idproducto = NEW.idproducto and idtienda = 
+	(select i.idtienda from tienda t, empleado e, inventario i 
+	where i.idtienda = t.idtienda 
+	and t.idtienda = e.idtienda 
+	and e.idempleado = NEW.idempleado);
+	--END IF;
+return NEW;
+end
+$$
+language plpgsql;
+
+create trigger tractualizarunidades after insert on Transaccion_Inventario_Det
+for each row
+execute procedure actualizarunidades();
+
+create function actualizarunidadesventa() returns trigger
+as
+$$
+declare
+begin
+	--IF old.idproducto = idproductosalida THEN
+	update inventario set saldo = saldo + OLD.unidades where idproducto = OLD.idproducto and idtienda = 
+	(select i.idtienda from tienda t, empleado e, inventario i 
+	where i.idtienda = t.idtienda 
+	and t.idtienda = e.idtienda 
+	and e.idempleado = OLD.idempleado);
+	--END IF;
+return OLD;
+end
+$$
+language plpgsql;
+
+create trigger tractualizarunidadesventa after delete on Transaccion_Inventario_Det
+for each row
+execute procedure actualizarunidadesventa();
